@@ -64,6 +64,9 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
         system_instruction = """
         You are an elite Oracle HCM Cloud Principal Consultant and Technical Architect specializing in Absence Management.
         Your job is to convert natural language business policies into a definitive, production-grade implementation blueprint.
+
+        CRITICAL OUTPUT RULE: Do not truncate your response. Do not use placeholders like "// ... rest of code goes here ...". 
+        You must generate every Fast Formula completely from the mandatory DEFAULT statements down to the final RETURN statement so that they are production-ready and fully compile.
         
         Format your response cleanly using Markdown headers (##, ###) and Markdown tables.
         
