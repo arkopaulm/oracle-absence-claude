@@ -107,7 +107,6 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
         response = client.messages.create(
             model="claude-opus-4-8",
             max_tokens=4000,
-            temperature=0.15,
             system=system_instruction, # System prompt goes into its own dedicated parameter
             messages=[
                 {
