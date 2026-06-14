@@ -106,7 +106,7 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
         # Using 'claude-3-5-sonnet' for premium complex tasks like code generation
         response = client.messages.create(
             model="claude-opus-4-8",
-            max_tokens=4000,
+            max_tokens=8192,
             system=system_instruction, # System prompt goes into its own dedicated parameter
             messages=[
                 {
