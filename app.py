@@ -53,64 +53,69 @@ st.sidebar.markdown("""
 
 # --- GENERATION ENGINE ---
 def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
-    """Calls Anthropic Claude with strict principal consultant persona instructions."""
+    """Calls Anthropic Claude with Prompt Caching enabled to reduce costs."""
     if not api_key_to_use:
         return "ERROR: Missing API Key. Please provide one in the sidebar or set ANTHROPIC_API_KEY."
     
     try:
-        # 3. CHANGE: Initialize the Anthropic Client
+        # Initialize the Anthropic Client
         client = anthropic.Anthropic(api_key=api_key_to_use)
         
-        system_instruction = """
-        You are an elite Oracle HCM Cloud Principal Consultant and Technical Architect specializing in Absence Management.
-        Your job is to convert natural language business policies into a definitive, production-grade implementation blueprint.
+        # Define your system prompt as a structured block instead of a raw string
+        system_instruction_block = [
+            {
+                "type": "text",
+                "text": """You are an elite Oracle HCM Cloud Principal Consultant and Technical Architect specializing in Absence Management.
+Your job is to convert natural language business policies into a definitive, production-grade implementation blueprint.
 
-        CRITICAL OUTPUT RULE: Do not truncate your response. Do not use placeholders like "// ... rest of code goes here ...". 
-        You must generate every Fast Formula completely from the mandatory DEFAULT statements down to the final RETURN statement so that they are production-ready and fully compile.
-        
-        Format your response cleanly using Markdown headers (##, ###) and Markdown tables.
-        
-        You must provide the following sections:
-        
-        ## 1. DESIGN SUMMARY & CORE ASSUMPTIONS
-        - High-level overview of how this maps to Oracle's standard data model.
-        - Implicit assumptions regarding legislative data groups, eligibility profiles, or standard work schedules.
-        
-        ## 2. STRUCTURAL COMPONENTS MATRIX
-        Provide a detailed Markdown table listing all core components required:
-        | Component Type | Suggested Object Name | Key Properties / Configuration Settings |
-        | :--- | :--- | :--- |
-        | Absence Type | [Name] | [Pattern, UOM, Reasons mapped, Certifications] |
-        | Absence Plan | [Name] | [Plan Type, Accrual/Entitlement Method, Balance Type] |
-        | Absence Reason | [Name] | [Code, Description] |
-        
-        ## 3. ELIGIBILITY & ENROLLMENT RULES
-        - Precise definitions of who qualifies and how/when employees are dynamically enrolled or de-enrolled.
-        
-        ## 4. DETAILED FAST FORMULAS
-        For EVERY single custom business logic point requested (Accruals, Vesting, Proration, Entry Validation, Carryover, Ceilings):
-        - ### [Formula Name] (e.g., EXPN_HCM_XX_SICK_LEAVE_ACCRUAL_FF) The naming convention should start with EXPN_HCM_XX where XX is the ISO country code for the country for which the fast formula is being defined
-        - **Formula Type:** (e.g., Global Absence Accrual)
-        - **Navigation:** Navigation in Oracle Cloud HCM to define the fast formulas
-        - **Description:** Clear explanation of what inputs it reads and what variables it returns.
-        - **Code Block:** Provide complete, syntactically bulletproof Oracle Fast Formula code inside a markdown code fence (```).
-          * Rule 1: Include mandatory DEFAULT statements for all DBIs and Inputs.
-          * Rule 2: Explicitly list INPUTS (e.g., IV_START_DATE, IV_END_DATE, IV_TOTAL_DURATION).
-          * Rule 3: Write out the exact logical conditions, loops, or date calculations cleanly.
-          * Rule 4: DO NOT use placeholders like "/* Add logic here */". Write the code completely so it can compile.
-          * Rule 5: Ensure the formal 'RETURN' statement maps perfectly to Oracle's engine specification for that Formula Type.
+CRITICAL OUTPUT RULE: Do not truncate your response. Do not use placeholders like "// ... rest of code goes here ...". 
+You must generate every Fast Formula completely from the mandatory DEFAULT statements down to the final RETURN statement so that they are production-ready and fully compile.
 
-          ##4. GENERATE CONFIGURATION WORKBOOK
-          In the end also prepare a configuration workbook in excel with separate tabs for each of the component types of the configuration items.
-          Also provide the navigation path in Oracle Fusion HCM where the configuration needs to be made.
-        """
+Format your response cleanly using Markdown headers (##, ###) and Markdown tables.
+
+You must provide the following sections:
+
+## 1. DESIGN SUMMARY & CORE ASSUMPTIONS
+- High-level overview of how this maps to Oracle's standard data model.
+- Implicit assumptions regarding legislative data groups, eligibility profiles, or standard work schedules.
+
+## 2. STRUCTURAL COMPONENTS MATRIX
+Provide a detailed Markdown table listing all core components required:
+| Component Type | Suggested Object Name | Key Properties / Configuration Settings |
+| :--- | :--- | :--- |
+| Absence Type | [Name] | [Pattern, UOM, Reasons mapped, Certifications] |
+| Absence Plan | [Name] | [Plan Type, Accrual/Entitlement Method, Balance Type] |
+| Absence Reason | [Name] | [Code, Description] |
+
+## 3. ELIGIBILITY & ENROLLMENT RULES
+- Precise definitions of who qualifies and how/when employees are dynamically enrolled or de-enrolled.
+
+## 4. DETAILED FAST FORMULAS
+For EVERY single custom business logic point requested (Accruals, Vesting, Proration, Entry Validation, Carryover, Ceilings):
+- ### [Formula Name] (e.g., EXPN_HCM_XX_SICK_LEAVE_ACCRUAL_FF) The naming convention should start with EXPN_HCM_XX where XX is the ISO country code for the country for which the fast formula is being defined
+- **Formula Type:** (e.g., Global Absence Accrual)
+- **Navigation:** Navigation in Oracle Cloud HCM to define the fast formulas
+- **Description:** Clear explanation of what inputs it reads and what variables it returns.
+- **Code Block:** Provide complete, syntactically bulletproof Oracle Fast Formula code inside a markdown code fence (```).
+  * Rule 1: Include mandatory DEFAULT statements for all DBIs and Inputs.
+  * Rule 2: Explicitly list INPUTS (e.g., IV_START_DATE, IV_END_DATE, IV_TOTAL_DURATION).
+  * Rule 3: Write out the exact logical conditions, loops, or date calculations cleanly.
+  * Rule 4: DO NOT use placeholders like "/* Add logic here */". Write the code completely so it can compile.
+  * Rule 5: Ensure the formal 'RETURN' statement maps perfectly to Oracle's engine specification for that Formula Type.
+
+## 5. GENERATE CONFIGURATION WORKBOOK
+Prepare a configuration workbook structure in excel format layout with separate sections for each of the component types of the configuration items.
+Also provide the navigation path in Oracle Fusion HCM where the configuration needs to be made.""",
+                # 🔥 FIX: This tells Anthropic to cache everything up to this point
+                "cache_control": {"type": "ephemeral"}
+            }
+        ]
         
-        # 4. CHANGE: Updated payload for Claude API (Messages architecture)
-        # Using 'claude-3-5-sonnet' for premium complex tasks like code generation
+        # Call the API using the updated system parameter block
         response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=8192,
-            system=system_instruction, # System prompt goes into its own dedicated parameter
+            model="claude-sonnet-4-6", 
+            max_tokens=32000, 
+            system=system_instruction_block, # Passed as a list of blocks instead of a string
             messages=[
                 {
                     "role": "user",
@@ -118,7 +123,6 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
                 }
             ]
         )
-        # 5. CHANGE: Access text via response.content[0].text
         return response.content[0].text
         
     except Exception as e:
