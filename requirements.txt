@@ -1,2 +1,2 @@
-streamlit
-google-genai
+# Replace google-genai with this:
+anthropic
