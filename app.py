@@ -105,7 +105,7 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
         # 4. CHANGE: Updated payload for Claude API (Messages architecture)
         # Using 'claude-3-5-sonnet' for premium complex tasks like code generation
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-opus-4-8",
             max_tokens=4000,
             temperature=0.15,
             system=system_instruction, # System prompt goes into its own dedicated parameter
