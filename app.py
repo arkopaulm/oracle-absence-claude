@@ -1,7 +1,7 @@
 import os
 import streamlit as st
-from google import genai
-from google.genai import types
+# 1. CHANGE: Switch from google to anthropic SDK
+import anthropic
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -36,12 +36,12 @@ st.markdown("""
 st.sidebar.title("Configuration Settings")
 st.sidebar.markdown("---")
 
-# Provide two ways to input the API key: Environment variable or a secure input box
-api_key = os.environ.get("GEMINI_API_KEY", "")
+# 2. CHANGE: Expect an Anthropic API Key instead of a Gemini API Key
+api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 if not api_key:
-    api_key = st.sidebar.text_input("Enter API Key", type="password", help="Get an API key from Google AI Studio")
+    api_key = st.sidebar.text_input("Enter Claude API Key", type="password", help="Get an API key from Anthropic Console")
 else:
-    st.sidebar.success("API Key detected from Environment Variables.")
+    st.sidebar.success("Claude API Key detected from Environment Variables.")
 
 st.sidebar.markdown("""
 ### How to use:
@@ -53,13 +53,13 @@ st.sidebar.markdown("""
 
 # --- GENERATION ENGINE ---
 def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
-    """Calls Gemini with strict principal consultant persona instructions."""
+    """Calls Anthropic Claude with strict principal consultant persona instructions."""
     if not api_key_to_use:
-        return "ERROR: Missing API Key. Please provide one in the sidebar or set GEMINI_API_KEY."
+        return "ERROR: Missing API Key. Please provide one in the sidebar or set ANTHROPIC_API_KEY."
     
     try:
-        # Initialize client with explicitly provided key or environment default
-        client = genai.Client(api_key=api_key_to_use)
+        # 3. CHANGE: Initialize the Anthropic Client
+        client = anthropic.Anthropic(api_key=api_key_to_use)
         
         system_instruction = """
         You are an elite Oracle HCM Cloud Principal Consultant and Technical Architect specializing in Absence Management.
@@ -100,25 +100,31 @@ def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
           ##4. GENERATE CONFIGURATION WORKBOOK
           In the end also prepare a configuration workbook in excel with separate tabs for each of the component types of the configuration items.
           Also provide the navigation path in Oracle Fusion HCM where the configuration needs to be made.
-          
         """
         
-        response = client.models.generate_content(
-            model='gemini-3.5-flash',
-            contents=f"Business Requirements:\n\n{requirements}",
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.15, # Kept low to ensure strict adherence to syntax and structural uniformity
-            )
+        # 4. CHANGE: Updated payload for Claude API (Messages architecture)
+        # Using 'claude-3-5-sonnet' for premium complex tasks like code generation
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            temperature=0.15,
+            system=system_instruction, # System prompt goes into its own dedicated parameter
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Business Requirements:\n\n{requirements}"
+                }
+            ]
         )
-        return response.text
+        # 5. CHANGE: Access text via response.content[0].text
+        return response.content[0].text
+        
     except Exception as e:
         return f"An operational error occurred while connecting to the AI core: {str(e)}"
 
 # --- MAIN INTERFACE ---
 st.title("🔮 EDW Oracle HCM Absence Management AI Configurator")
 st.caption("Convert complex business requirements directly into Oracle Setup Matrixes & Complete Fast Formulas.")
-
 
 # Default sample requirement to populate the box nicely
 sample_text = (
