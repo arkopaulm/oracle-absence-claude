@@ -52,16 +52,17 @@ st.sidebar.markdown("""
 """)
 
 # --- GENERATION ENGINE ---
-def generate_oracle_blueprint(requirements: str, api_key_to_use: str) -> str:
-    """Calls Anthropic Claude with Prompt Caching enabled to reduce costs."""
+
+def generate_oracle_blueprint(requirements: str, api_key_to_use: str):
+    """Calls Anthropic Claude and yields chunks of text dynamically to support streaming."""
     if not api_key_to_use:
-        return "ERROR: Missing API Key. Please provide one in the sidebar or set ANTHROPIC_API_KEY."
+        # Yielding an error string so the generator can handle it safely
+        yield "ERROR: Missing API Key. Please provide one in the sidebar or set ANTHROPIC_API_KEY."
+        return
     
     try:
-        # Initialize the Anthropic Client
         client = anthropic.Anthropic(api_key=api_key_to_use)
         
-        # Define your system prompt as a structured block instead of a raw string
         system_instruction_block = [
             {
                 "type": "text",
@@ -106,27 +107,27 @@ For EVERY single custom business logic point requested (Accruals, Vesting, Prora
 ## 5. GENERATE CONFIGURATION WORKBOOK
 Prepare a configuration workbook structure in excel format layout with separate sections for each of the component types of the configuration items.
 Also provide the navigation path in Oracle Fusion HCM where the configuration needs to be made.""",
-                # 🔥 FIX: This tells Anthropic to cache everything up to this point
                 "cache_control": {"type": "ephemeral"}
             }
         ]
         
-        # Call the API using the updated system parameter block
-        response = client.messages.create(
-            model="claude-sonnet-4-6", 
-            max_tokens=32000, 
-            system=system_instruction_block, # Passed as a list of blocks instead of a string
+        # 🔥 FIX: Using client.messages.stream instead of client.messages.create
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=32000,
+            system=system_instruction_block,
             messages=[
                 {
                     "role": "user",
                     "content": f"Business Requirements:\n\n{requirements}"
                 }
             ]
-        )
-        return response.content[0].text
-        
+        ) as stream:
+            for text in stream.text_stream:
+                yield text  # Yield each piece of text as it streams in from Claude
+                
     except Exception as e:
-        return f"An operational error occurred while connecting to the AI core: {str(e)}"
+        yield f"An operational error occurred while connecting to the AI core: {str(e)}"
 
 # --- MAIN INTERFACE ---
 st.title("🔮 EDW Oracle HCM Absence Management AI Configurator")
@@ -165,6 +166,10 @@ if generate_btn:
     elif not api_key:
         st.error("Please enter your LLM API Key in the sidebar to run the application.")
     else:
-        with st.spinner("Analyzing rules, generating components, and coding Fast Formulas..."):
-            blueprint_output = generate_oracle_blueprint(user_requirements, api_key)
-            st.markdown(blueprint_output)
+        # Create a container where the text will stream out elegantly
+        with st.spinner("Connecting to Claude Core..."):
+            # Call the generator function
+            blueprint_stream = generate_oracle_blueprint(user_requirements, api_key)
+            
+        # 🔥 FIX: This handles the stream from Claude and updates the UI live
+        st.write_stream(blueprint_stream)
