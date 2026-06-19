@@ -5,7 +5,7 @@ import anthropic
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Oracle HCM Absence AI Configurator",
+    page_title="EDW Oracle HCM Absence AI Configurator",
     page_icon="🔮",
     layout="wide",
     initial_sidebar_state="expanded"
